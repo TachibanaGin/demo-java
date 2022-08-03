@@ -1,0 +1,36 @@
+stages:
+  - test
+  - ci
+
+variables:
+  registry: 172.16.5.132
+  registryProject: test
+  imageName: demo-java
+  
+test:
+  stage: test
+  image: 172.16.5.132/library/maven:nexus-build-image
+  script:
+    - mvn test
+  only:
+    - main
+  tags:
+    - java
+    
+docker:
+  stage: ci
+  image: 172.16.5.132/library/docker:20.10.11-dind
+  services:
+   - name: 172.16.5.132/library/docker:20.10.11-dind
+     command: ["--registry-mirror", "172.16.5.132"] 
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  script:
+    - docker login ${registry} -u admin -p Harbor@12345 
+    - export tag=`date "+%F-%H-%M"`
+    - docker build -t ${registry}/${registryProject}/${imageName}:${tag} .
+    - docker push ${registry}/${registryProject}/${imageName}:${tag} 
+  only:
+    - main
+  tags:
+    - java
